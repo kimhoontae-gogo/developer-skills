@@ -20,6 +20,7 @@
 ## Notes
 
 - `update-plan` and `update-phase` accept `--patch` JSON for multi-field updates.
+- `update-phase` still requires a complete brief: `title`, `detail`, `context`, `approach`, `files`, `steps`, `validation`, and `handoff` must all be present either directly or inside `--patch`.
 - `create-plan --phase` can pre-seed a phase, but each phase JSON object must include `title`, `detail`, `context`, `approach`, `files`, `steps`, `validation`, and `handoff`.
 - `add-phase` and `insert-phase` require all brief fields on the command line, even if some values are empty strings.
 - `insert-phase` and `move-phase` only allow `todo` phases and only within the `todo` section.

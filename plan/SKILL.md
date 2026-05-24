@@ -29,6 +29,7 @@ It is designed for long-lived planning work where another session must be able t
 - Write phases so another session can continue without external memory or follow-up questions.
 - `add-phase` and `insert-phase` require every brief field at the CLI level.
 - `create-plan --phase` requires every brief field in each JSON object.
+- `update-phase` requires every brief field either as direct CLI values or inside `--patch`.
 - Prefer the phase template in `references/phase-template.md` when creating or updating phases.
 - Keep examples in `references/examples.md` aligned with the current schema and CLI.
 
@@ -50,6 +51,7 @@ Use the bundled CLI as the primary interface.
 - `plan show-plan --plan-id 1`
 - `plan show-phase --phase-id 2`
 - `plan update-plan --plan-id 1 --patch '{"goal":"Export plans to Markdown"}'`
+- `plan update-phase --phase-id 2 --patch '{"title":"Design","detail":"Design the export flow","context":"The plan needs a resumed handoff.","approach":"Start from the schema.","files":"scripts/plan_store.py,references/export-format.md","steps":"1. Extend schema. 2. Update CLI. 3. Render the new fields.","validation":"show-plan and export-markdown both include the brief.","handoff":"Next session should verify round-tripping before implementation continues."}'`
 - `plan start-phase --phase-id 2`
 - `plan complete-phase --phase-id 2`
 

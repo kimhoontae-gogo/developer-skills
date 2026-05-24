@@ -905,6 +905,13 @@ def _patch_str(payload: dict[str, Any], key: str) -> str | None:
     return value
 
 
+def _require_strings(payload: dict[str, str | None], *, keys: Sequence[str], label: str) -> dict[str, str]:
+    missing = [key for key in keys if payload.get(key) is None]
+    if missing:
+        raise ValueError(f"{label} requires values for: {', '.join(missing)}")
+    return {key: payload[key] or "" for key in keys}
+
+
 def cmd_init_db(args: argparse.Namespace) -> None:
     store = PlanStore(resolve_db_path(args.db))
     store.ensure_schema()
@@ -1050,17 +1057,31 @@ def cmd_update_phase(args: argparse.Namespace) -> None:
     steps = args.steps if args.steps is not None else _patch_str(patch, "steps")
     validation = args.validation if args.validation is not None else _patch_str(patch, "validation")
     handoff = args.handoff if args.handoff is not None else _patch_str(patch, "handoff")
+    fields = _require_strings(
+        {
+            "title": title,
+            "detail": detail,
+            "context": context,
+            "approach": approach,
+            "files": files,
+            "steps": steps,
+            "validation": validation,
+            "handoff": handoff,
+        },
+        keys=("title", "detail", "context", "approach", "files", "steps", "validation", "handoff"),
+        label="update-phase",
+    )
     _print_json(
         store.update_phase(
             args.phase_id,
-            title=title,
-            detail=detail,
-            context=context,
-            approach=approach,
-            files=files,
-            steps=steps,
-            validation=validation,
-            handoff=handoff,
+            title=fields["title"],
+            detail=fields["detail"],
+            context=fields["context"],
+            approach=fields["approach"],
+            files=fields["files"],
+            steps=fields["steps"],
+            validation=fields["validation"],
+            handoff=fields["handoff"],
         )
     )
 
