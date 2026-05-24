@@ -27,6 +27,8 @@ It is designed for long-lived planning work where another session must be able t
 - Every phase should include `detail`, `context`, `approach`, `files`, `steps`, `validation`, and `handoff`.
 - If a section is not applicable, leave it empty only after deciding it is genuinely unnecessary.
 - Write phases so another session can continue without external memory or follow-up questions.
+- `add-phase` and `insert-phase` require every brief field at the CLI level.
+- `create-plan --phase` requires every brief field in each JSON object.
 - Prefer the phase template in `references/phase-template.md` when creating or updating phases.
 - Keep examples in `references/examples.md` aligned with the current schema and CLI.
 

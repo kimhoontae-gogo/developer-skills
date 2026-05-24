@@ -865,12 +865,12 @@ def _phase_payloads(values: Iterable[str] | None) -> list[dict[str, str]]:
             {
                 "title": title,
                 "detail": detail,
-                "context": _phase_text(payload, "context"),
-                "approach": _phase_text(payload, "approach"),
-                "files": _phase_text(payload, "files"),
-                "steps": _phase_text(payload, "steps"),
-                "validation": _phase_text(payload, "validation"),
-                "handoff": _phase_text(payload, "handoff"),
+                "context": _phase_text(payload, "context", required=True),
+                "approach": _phase_text(payload, "approach", required=True),
+                "files": _phase_text(payload, "files", required=True),
+                "steps": _phase_text(payload, "steps", required=True),
+                "validation": _phase_text(payload, "validation", required=True),
+                "handoff": _phase_text(payload, "handoff", required=True),
             }
         )
     return payloads
@@ -1122,7 +1122,7 @@ def build_parser() -> argparse.ArgumentParser:
     create_plan.add_argument(
         "--phase",
         action="append",
-        help='phase JSON object with brief fields, e.g. \'{"title":"Design","detail":"...","context":"...","approach":"..."}\'',
+        help='phase JSON object with all brief fields, e.g. \'{"title":"Design","detail":"...","context":"...","approach":"...","files":"...","steps":"...","validation":"...","handoff":"..."}\'',
     )
     create_plan.set_defaults(func=cmd_create_plan)
 
@@ -1155,24 +1155,24 @@ def build_parser() -> argparse.ArgumentParser:
     add_phase.add_argument("--plan-id", type=int, required=True)
     add_phase.add_argument("--title", required=True)
     add_phase.add_argument("--detail", required=True)
-    add_phase.add_argument("--context", help="why this phase exists")
-    add_phase.add_argument("--approach", help="how to execute the phase")
-    add_phase.add_argument("--files", help="comma-separated files or modules to touch")
-    add_phase.add_argument("--steps", help="concrete implementation steps")
-    add_phase.add_argument("--validation", help="how to confirm the phase is done")
-    add_phase.add_argument("--handoff", help="what the next session should check first")
+    add_phase.add_argument("--context", required=True, help="why this phase exists")
+    add_phase.add_argument("--approach", required=True, help="how to execute the phase")
+    add_phase.add_argument("--files", required=True, help="comma-separated files or modules to touch")
+    add_phase.add_argument("--steps", required=True, help="concrete implementation steps")
+    add_phase.add_argument("--validation", required=True, help="how to confirm the phase is done")
+    add_phase.add_argument("--handoff", required=True, help="what the next session should check first")
     add_phase.set_defaults(func=cmd_add_phase)
 
     insert_phase = sub.add_parser("insert-phase", help="insert a todo phase before or after another todo phase")
     insert_phase.add_argument("--plan-id", type=int, required=True)
     insert_phase.add_argument("--title", required=True)
     insert_phase.add_argument("--detail", required=True)
-    insert_phase.add_argument("--context", help="why this phase exists")
-    insert_phase.add_argument("--approach", help="how to execute the phase")
-    insert_phase.add_argument("--files", help="comma-separated files or modules to touch")
-    insert_phase.add_argument("--steps", help="concrete implementation steps")
-    insert_phase.add_argument("--validation", help="how to confirm the phase is done")
-    insert_phase.add_argument("--handoff", help="what the next session should check first")
+    insert_phase.add_argument("--context", required=True, help="why this phase exists")
+    insert_phase.add_argument("--approach", required=True, help="how to execute the phase")
+    insert_phase.add_argument("--files", required=True, help="comma-separated files or modules to touch")
+    insert_phase.add_argument("--steps", required=True, help="concrete implementation steps")
+    insert_phase.add_argument("--validation", required=True, help="how to confirm the phase is done")
+    insert_phase.add_argument("--handoff", required=True, help="what the next session should check first")
     insert_phase.add_argument("--before-phase-id", type=int)
     insert_phase.add_argument("--after-phase-id", type=int)
     insert_phase.set_defaults(func=cmd_insert_phase)

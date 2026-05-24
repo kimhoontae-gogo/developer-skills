@@ -20,7 +20,8 @@
 ## Notes
 
 - `update-plan` and `update-phase` accept `--patch` JSON for multi-field updates.
-- `create-plan --phase` can pre-seed a phase with the full brief fields when you already know the implementation shape.
+- `create-plan --phase` can pre-seed a phase, but each phase JSON object must include `title`, `detail`, `context`, `approach`, `files`, `steps`, `validation`, and `handoff`.
+- `add-phase` and `insert-phase` require all brief fields on the command line, even if some values are empty strings.
 - `insert-phase` and `move-phase` only allow `todo` phases and only within the `todo` section.
 - `show-plan` and `show-phase` default to human-readable output; add `--json` for structured output.
 - The default SQLite database lives at `~/.developer-skills/plan.sqlite3` unless `PLAN_DB_PATH` or `--db` overrides it.
