@@ -622,7 +622,7 @@ def resolve_db_path(value: str | None) -> Path:
     env = os.environ.get("PLAN_DB_PATH")
     if env:
         return Path(env)
-    return Path.cwd() / "plan.sqlite3"
+    return Path.home() / ".developer-skills" / "plan.sqlite3"
 
 
 def _print_json(payload: Any) -> None:
@@ -738,7 +738,8 @@ def cmd_init_db(args: argparse.Namespace) -> None:
 
 def cmd_create_project(args: argparse.Namespace) -> None:
     store = PlanStore(resolve_db_path(args.db))
-    _print_json(store.create_project(args.name, args.description or ""))
+    name = args.name or Path.cwd().name
+    _print_json(store.create_project(name, args.description or ""))
 
 
 def cmd_update_project(args: argparse.Namespace) -> None:
@@ -882,7 +883,7 @@ def build_parser() -> argparse.ArgumentParser:
     init_db.set_defaults(func=cmd_init_db)
 
     create_project = sub.add_parser("create-project", help="create a project")
-    create_project.add_argument("--name", required=True)
+    create_project.add_argument("--name")
     create_project.add_argument("--description")
     create_project.set_defaults(func=cmd_create_project)
 

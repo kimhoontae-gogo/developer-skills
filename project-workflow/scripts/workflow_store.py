@@ -684,7 +684,7 @@ def resolve_db_path(value: str | None) -> Path:
     env = os.environ.get("WORKFLOW_DB_PATH")
     if env:
         return Path(env)
-    return Path.cwd() / "workflow.sqlite3"
+    return Path.home() / ".developer-skills" / "workflow.sqlite3"
 
 
 def _print_json(payload: Any) -> None:

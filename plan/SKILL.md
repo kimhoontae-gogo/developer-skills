@@ -22,6 +22,7 @@ It is designed for long-lived planning work where another session must be able t
 - `todo` phases may only move within the `todo` section.
 - `todo` phases may not move ahead of `in_progress` or `done` phases.
 - After any status change, recompute the plan summary state.
+- If `create-project` is called without `--name`, use the current working directory name.
 
 ## Data Layer
 
@@ -30,10 +31,12 @@ Use the bundled CLI as the primary interface.
 - `scripts/plan_cli.py` is the entry point AI should use for plan operations.
 - `scripts/plan_store.py` is the internal storage layer used by the CLI and should generally not be called directly.
 - The store enforces the phase-order rule at the script level, so invalid moves and starts fail before they can corrupt state.
+- The default SQLite database lives at `~/.developer-skills/plan.sqlite3` unless `PLAN_DB_PATH` or `--db` overrides it.
 
 ## Common Examples
 
 - `plan create-project --name "Payments" --description "Billing work"`
+- `plan create-project --description "Billing work"`
 - `plan create-plan --project-id 1 --title "Add export" --goal "Export current plans"`
 - `plan show-plan --plan-id 1`
 - `plan show-phase --phase-id 2`

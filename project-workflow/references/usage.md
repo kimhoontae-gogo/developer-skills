@@ -35,4 +35,5 @@ python3 scripts/workflow_cli.py -h
 ## Notes
 
 - If the user does not specify a project, commands that resolve project context should use the current working directory name.
+- The default SQLite database lives at `~/.developer-skills/workflow.sqlite3` unless `WORKFLOW_DB_PATH` or `--db` overrides it.
 - `-h` and `--help` are available on the top-level CLI and every subcommand.

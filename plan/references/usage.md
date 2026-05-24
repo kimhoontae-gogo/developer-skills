@@ -3,6 +3,7 @@
 ## Common Commands
 
 - Create a project: `plan create-project --name "Payments" --description "Billing work"`
+- Create a project from the current directory: `plan create-project --description "Billing work"`
 - Update a project: `plan update-project --project-id 1 --description "Updated description"`
 - List projects: `plan list-projects`
 - Show one project: `plan show-project --project-id 1`
@@ -21,4 +22,5 @@
 - `update-plan` and `update-phase` accept `--patch` JSON for multi-field updates.
 - `insert-phase` and `move-phase` only allow `todo` phases and only within the `todo` section.
 - `show-plan` and `show-phase` default to human-readable output; add `--json` for structured output.
+- The default SQLite database lives at `~/.developer-skills/plan.sqlite3` unless `PLAN_DB_PATH` or `--db` overrides it.
 - `-h` / `--help` is available on `plan_cli.py` and every subcommand via argparse.
