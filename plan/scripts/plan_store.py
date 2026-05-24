@@ -12,7 +12,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Iterator, Sequence
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+
+PHASE_BRIEF_COLUMNS = (
+    ("context", "TEXT NOT NULL DEFAULT ''"),
+    ("approach", "TEXT NOT NULL DEFAULT ''"),
+    ("files", "TEXT NOT NULL DEFAULT ''"),
+    ("steps", "TEXT NOT NULL DEFAULT ''"),
+    ("validation", "TEXT NOT NULL DEFAULT ''"),
+    ("handoff", "TEXT NOT NULL DEFAULT ''"),
+)
 
 SCHEMA_SQL = """
 PRAGMA foreign_keys = ON;
@@ -53,6 +62,12 @@ CREATE TABLE IF NOT EXISTS phases (
     position INTEGER NOT NULL,
     title TEXT NOT NULL,
     detail TEXT NOT NULL,
+    context TEXT NOT NULL DEFAULT '',
+    approach TEXT NOT NULL DEFAULT '',
+    files TEXT NOT NULL DEFAULT '',
+    steps TEXT NOT NULL DEFAULT '',
+    validation TEXT NOT NULL DEFAULT '',
+    handoff TEXT NOT NULL DEFAULT '',
     status TEXT NOT NULL CHECK (status IN ('todo', 'in_progress', 'done')),
     started_at TEXT NULL,
     completed_at TEXT NULL,
@@ -92,6 +107,17 @@ def row_to_dict(row: sqlite3.Row | None) -> dict[str, Any] | None:
     return dict(row)
 
 
+def _phase_text(payload: dict[str, Any], key: str, *, required: bool = False) -> str:
+    if key not in payload or payload[key] is None:
+        if required:
+            raise ValueError(f'phase JSON must include string field "{key}"')
+        return ""
+    value = payload[key]
+    if not isinstance(value, str):
+        raise ValueError(f'phase JSON field "{key}" must be a string')
+    return value
+
+
 @dataclass(frozen=True)
 class PlanDetail:
     project: dict[str, Any]
@@ -121,6 +147,7 @@ class PlanStore:
     def ensure_schema(self) -> None:
         with self.connect() as conn:
             conn.executescript(SCHEMA_SQL)
+            self._ensure_phase_brief_columns(conn)
             row = conn.execute("SELECT schema_version FROM schema_meta WHERE id = 1").fetchone()
             now = utc_now()
             if row is None:
@@ -133,6 +160,12 @@ class PlanStore:
                     "UPDATE schema_meta SET schema_version = ?, updated_at = ? WHERE id = 1",
                     (SCHEMA_VERSION, now),
                 )
+
+    def _ensure_phase_brief_columns(self, conn: sqlite3.Connection) -> None:
+        existing = {row["name"] for row in conn.execute("PRAGMA table_info(phases)").fetchall()}
+        for column, ddl in PHASE_BRIEF_COLUMNS:
+            if column not in existing:
+                conn.execute(f"ALTER TABLE phases ADD COLUMN {column} {ddl}")
 
     def _event(self, conn: sqlite3.Connection, entity_type: str, entity_id: int, event_type: str, payload: dict[str, Any]) -> None:
         conn.execute(
@@ -308,7 +341,7 @@ class PlanStore:
         project_id: int,
         title: str,
         goal: str,
-        phases: Iterable[dict[str, str]] | None = None,
+        phases: Iterable[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         with self.connect() as conn:
             self._get_project(conn, project_id=project_id)
@@ -325,10 +358,23 @@ class PlanStore:
                 for position, phase in enumerate(phases, start=1):
                     conn.execute(
                         """
-                        INSERT INTO phases (plan_id, position, title, detail, status, created_at, updated_at)
-                        VALUES (?, ?, ?, ?, 'todo', ?, ?)
+                        INSERT INTO phases (plan_id, position, title, detail, context, approach, files, steps, validation, handoff, status, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'todo', ?, ?)
                         """,
-                        (plan_id, position, phase["title"], phase["detail"], now, now),
+                        (
+                            plan_id,
+                            position,
+                            phase["title"],
+                            phase["detail"],
+                            phase.get("context", ""),
+                            phase.get("approach", ""),
+                            phase.get("files", ""),
+                            phase.get("steps", ""),
+                            phase.get("validation", ""),
+                            phase.get("handoff", ""),
+                            now,
+                            now,
+                        ),
                     )
             self.recompute_plan(conn, plan_id)
             plan = self._get_plan(conn, plan_id)
@@ -405,26 +451,56 @@ class PlanStore:
         position: int,
         title: str,
         detail: str,
+        context: str = "",
+        approach: str = "",
+        files: str = "",
+        steps: str = "",
+        validation: str = "",
+        handoff: str = "",
     ) -> dict[str, Any]:
         now = utc_now()
         cursor = conn.execute(
             """
-            INSERT INTO phases (plan_id, position, title, detail, status, created_at, updated_at)
-            VALUES (?, ?, ?, ?, 'todo', ?, ?)
+            INSERT INTO phases (plan_id, position, title, detail, context, approach, files, steps, validation, handoff, status, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'todo', ?, ?)
             """,
-            (plan_id, position, title, detail, now, now),
+            (plan_id, position, title, detail, context, approach, files, steps, validation, handoff, now, now),
         )
         phase = self._get_phase(conn, cursor.lastrowid)
         self._event(conn, "phase", phase["id"], "create", {"plan_id": plan_id, "position": position, "title": title})
         return phase
 
-    def add_phase(self, plan_id: int, title: str, detail: str) -> dict[str, Any]:
+    def add_phase(
+        self,
+        plan_id: int,
+        title: str,
+        detail: str,
+        *,
+        context: str = "",
+        approach: str = "",
+        files: str = "",
+        steps: str = "",
+        validation: str = "",
+        handoff: str = "",
+    ) -> dict[str, Any]:
         with self.connect() as conn:
             plan = self._get_plan(conn, plan_id)
             if plan["archived_at"] is not None:
                 raise ValueError("cannot modify an archived plan")
             phases = self._plan_phases(conn, plan_id, include_archived=False)
-            phase = self._insert_phase_record(conn, plan_id=plan_id, position=10**9, title=title, detail=detail)
+            phase = self._insert_phase_record(
+                conn,
+                plan_id=plan_id,
+                position=10**9,
+                title=title,
+                detail=detail,
+                context=context,
+                approach=approach,
+                files=files,
+                steps=steps,
+                validation=validation,
+                handoff=handoff,
+            )
             ordered_ids = [item["id"] for item in phases] + [phase["id"]]
             self._rewrite_order(conn, plan_id, ordered_ids)
             self.recompute_plan(conn, plan_id)
@@ -438,6 +514,12 @@ class PlanStore:
         *,
         before_phase_id: int | None = None,
         after_phase_id: int | None = None,
+        context: str = "",
+        approach: str = "",
+        files: str = "",
+        steps: str = "",
+        validation: str = "",
+        handoff: str = "",
     ) -> dict[str, Any]:
         if (before_phase_id is None) == (after_phase_id is None):
             raise ValueError("specify exactly one of before_phase_id or after_phase_id")
@@ -452,7 +534,19 @@ class PlanStore:
                 raise ValueError("target phase must belong to the same plan")
             if target["status"] != "todo":
                 raise ValueError("phases may only be inserted relative to todo phases")
-            phase = self._insert_phase_record(conn, plan_id=plan_id, position=10**9, title=title, detail=detail)
+            phase = self._insert_phase_record(
+                conn,
+                plan_id=plan_id,
+                position=10**9,
+                title=title,
+                detail=detail,
+                context=context,
+                approach=approach,
+                files=files,
+                steps=steps,
+                validation=validation,
+                handoff=handoff,
+            )
             phases = self._plan_phases(conn, plan_id, include_archived=False)
             ordered_ids = [item["id"] for item in phases if item["id"] != phase["id"]]
             target_index = ordered_ids.index(target_id)
@@ -510,6 +604,12 @@ class PlanStore:
         *,
         title: str | None = None,
         detail: str | None = None,
+        context: str | None = None,
+        approach: str | None = None,
+        files: str | None = None,
+        steps: str | None = None,
+        validation: str | None = None,
+        handoff: str | None = None,
     ) -> dict[str, Any]:
         with self.connect() as conn:
             phase = self._get_phase(conn, phase_id)
@@ -523,6 +623,24 @@ class PlanStore:
             if detail is not None:
                 updates.append("detail = ?")
                 params.append(detail)
+            if context is not None:
+                updates.append("context = ?")
+                params.append(context)
+            if approach is not None:
+                updates.append("approach = ?")
+                params.append(approach)
+            if files is not None:
+                updates.append("files = ?")
+                params.append(files)
+            if steps is not None:
+                updates.append("steps = ?")
+                params.append(steps)
+            if validation is not None:
+                updates.append("validation = ?")
+                params.append(validation)
+            if handoff is not None:
+                updates.append("handoff = ?")
+                params.append(handoff)
             if not updates:
                 return phase
             updates.append("updated_at = ?")
@@ -530,7 +648,26 @@ class PlanStore:
             params.append(phase_id)
             conn.execute(f"UPDATE phases SET {', '.join(updates)} WHERE id = ?", params)
             updated = self._get_phase(conn, phase_id)
-            self._event(conn, "phase", phase_id, "update", {k: v for k, v in {"title": title, "detail": detail}.items() if v is not None})
+            self._event(
+                conn,
+                "phase",
+                phase_id,
+                "update",
+                {
+                    k: v
+                    for k, v in {
+                        "title": title,
+                        "detail": detail,
+                        "context": context,
+                        "approach": approach,
+                        "files": files,
+                        "steps": steps,
+                        "validation": validation,
+                        "handoff": handoff,
+                    }.items()
+                    if v is not None
+                },
+            )
             return updated
 
     def start_phase(self, phase_id: int) -> dict[str, Any]:
@@ -611,6 +748,11 @@ class PlanStore:
                     "",
                 ]
             )
+            for label, value in _phase_brief_sections(phase):
+                text = (value or "").strip()
+                if not text:
+                    continue
+                lines.extend([f"#### {label}", text, ""])
         if lines and lines[-1] == "":
             lines.pop()
         return "\n".join(lines)
@@ -645,7 +787,8 @@ def _print_plan_detail(detail: PlanDetail) -> None:
         marker = "*" if phase["id"] == plan["current_phase_id"] else "-"
         print(f"  {marker} [{phase['position']}] {phase['title']} #{phase['id']} :: {phase['status']}")
         detail_text = phase["detail"].replace("\n", "\n    ")
-        print(f"    {detail_text}")
+        print(f"    Detail: {detail_text}")
+        _print_phase_brief(phase)
 
 
 def _print_phase_detail(payload: dict[str, Any]) -> None:
@@ -658,6 +801,7 @@ def _print_phase_detail(payload: dict[str, Any]) -> None:
     print(f"Position: {phase['position']}")
     print(f"Status: {phase['status']}")
     print(f"Detail: {phase['detail']}")
+    _print_phase_brief(phase, indent="  ")
     print(f"Started at: {phase['started_at'] or 'None'}")
     print(f"Completed at: {phase['completed_at'] or 'None'}")
     print(f"Archived at: {phase['archived_at'] or 'None'}")
@@ -680,6 +824,28 @@ def _print_project_detail(payload: dict[str, Any]) -> None:
             print(f"  - {plan['title']} #{plan['id']} :: {label}")
 
 
+def _phase_brief_sections(phase: dict[str, Any]) -> list[tuple[str, str]]:
+    return [
+        ("Context", phase.get("context", "")),
+        ("Approach", phase.get("approach", "")),
+        ("Files", phase.get("files", "")),
+        ("Steps", phase.get("steps", "")),
+        ("Validation", phase.get("validation", "")),
+        ("Handoff", phase.get("handoff", "")),
+    ]
+
+
+def _print_phase_brief(phase: dict[str, Any], *, indent: str = "    ") -> None:
+    sections = _phase_brief_sections(phase)
+    for title, value in sections:
+        text = (value or "").strip()
+        if not text:
+            continue
+        print(f"{indent}{title}:")
+        for line in text.splitlines():
+            print(f"{indent}  {line}")
+
+
 def _parse_json_object(value: str) -> dict[str, Any]:
     payload = json.loads(value)
     if not isinstance(payload, dict):
@@ -693,11 +859,20 @@ def _phase_payloads(values: Iterable[str] | None) -> list[dict[str, str]]:
     payloads: list[dict[str, str]] = []
     for raw in values:
         payload = _parse_json_object(raw)
-        title = payload.get("title")
-        detail = payload.get("detail")
-        if not isinstance(title, str) or not isinstance(detail, str):
-            raise ValueError('phase JSON must include string fields "title" and "detail"')
-        payloads.append({"title": title, "detail": detail})
+        title = _phase_text(payload, "title", required=True)
+        detail = _phase_text(payload, "detail", required=True)
+        payloads.append(
+            {
+                "title": title,
+                "detail": detail,
+                "context": _phase_text(payload, "context"),
+                "approach": _phase_text(payload, "approach"),
+                "files": _phase_text(payload, "files"),
+                "steps": _phase_text(payload, "steps"),
+                "validation": _phase_text(payload, "validation"),
+                "handoff": _phase_text(payload, "handoff"),
+            }
+        )
     return payloads
 
 
@@ -817,7 +992,19 @@ def cmd_show_phase(args: argparse.Namespace) -> None:
 
 def cmd_add_phase(args: argparse.Namespace) -> None:
     store = PlanStore(resolve_db_path(args.db))
-    _print_json(store.add_phase(args.plan_id, args.title, args.detail))
+    _print_json(
+        store.add_phase(
+            args.plan_id,
+            args.title,
+            args.detail,
+            context=args.context or "",
+            approach=args.approach or "",
+            files=args.files or "",
+            steps=args.steps or "",
+            validation=args.validation or "",
+            handoff=args.handoff or "",
+        )
+    )
 
 
 def cmd_insert_phase(args: argparse.Namespace) -> None:
@@ -831,6 +1018,12 @@ def cmd_insert_phase(args: argparse.Namespace) -> None:
             args.detail,
             before_phase_id=before_phase_id,
             after_phase_id=after_phase_id,
+            context=args.context or "",
+            approach=args.approach or "",
+            files=args.files or "",
+            steps=args.steps or "",
+            validation=args.validation or "",
+            handoff=args.handoff or "",
         )
     )
 
@@ -851,7 +1044,25 @@ def cmd_update_phase(args: argparse.Namespace) -> None:
     patch = _parse_patch(args.patch)
     title = args.title if args.title is not None else _patch_str(patch, "title")
     detail = args.detail if args.detail is not None else _patch_str(patch, "detail")
-    _print_json(store.update_phase(args.phase_id, title=title, detail=detail))
+    context = args.context if args.context is not None else _patch_str(patch, "context")
+    approach = args.approach if args.approach is not None else _patch_str(patch, "approach")
+    files = args.files if args.files is not None else _patch_str(patch, "files")
+    steps = args.steps if args.steps is not None else _patch_str(patch, "steps")
+    validation = args.validation if args.validation is not None else _patch_str(patch, "validation")
+    handoff = args.handoff if args.handoff is not None else _patch_str(patch, "handoff")
+    _print_json(
+        store.update_phase(
+            args.phase_id,
+            title=title,
+            detail=detail,
+            context=context,
+            approach=approach,
+            files=files,
+            steps=steps,
+            validation=validation,
+            handoff=handoff,
+        )
+    )
 
 
 def cmd_start_phase(args: argparse.Namespace) -> None:
@@ -911,7 +1122,7 @@ def build_parser() -> argparse.ArgumentParser:
     create_plan.add_argument(
         "--phase",
         action="append",
-        help='phase JSON object, e.g. \'{"title":"Design","detail":"..."}\'',
+        help='phase JSON object with brief fields, e.g. \'{"title":"Design","detail":"...","context":"...","approach":"..."}\'',
     )
     create_plan.set_defaults(func=cmd_create_plan)
 
@@ -944,12 +1155,24 @@ def build_parser() -> argparse.ArgumentParser:
     add_phase.add_argument("--plan-id", type=int, required=True)
     add_phase.add_argument("--title", required=True)
     add_phase.add_argument("--detail", required=True)
+    add_phase.add_argument("--context", help="why this phase exists")
+    add_phase.add_argument("--approach", help="how to execute the phase")
+    add_phase.add_argument("--files", help="comma-separated files or modules to touch")
+    add_phase.add_argument("--steps", help="concrete implementation steps")
+    add_phase.add_argument("--validation", help="how to confirm the phase is done")
+    add_phase.add_argument("--handoff", help="what the next session should check first")
     add_phase.set_defaults(func=cmd_add_phase)
 
     insert_phase = sub.add_parser("insert-phase", help="insert a todo phase before or after another todo phase")
     insert_phase.add_argument("--plan-id", type=int, required=True)
     insert_phase.add_argument("--title", required=True)
     insert_phase.add_argument("--detail", required=True)
+    insert_phase.add_argument("--context", help="why this phase exists")
+    insert_phase.add_argument("--approach", help="how to execute the phase")
+    insert_phase.add_argument("--files", help="comma-separated files or modules to touch")
+    insert_phase.add_argument("--steps", help="concrete implementation steps")
+    insert_phase.add_argument("--validation", help="how to confirm the phase is done")
+    insert_phase.add_argument("--handoff", help="what the next session should check first")
     insert_phase.add_argument("--before-phase-id", type=int)
     insert_phase.add_argument("--after-phase-id", type=int)
     insert_phase.set_defaults(func=cmd_insert_phase)
@@ -964,6 +1187,12 @@ def build_parser() -> argparse.ArgumentParser:
     update_phase.add_argument("--phase-id", type=int, required=True)
     update_phase.add_argument("--title")
     update_phase.add_argument("--detail")
+    update_phase.add_argument("--context", help="why this phase exists")
+    update_phase.add_argument("--approach", help="how to execute the phase")
+    update_phase.add_argument("--files", help="comma-separated files or modules to touch")
+    update_phase.add_argument("--steps", help="concrete implementation steps")
+    update_phase.add_argument("--validation", help="how to confirm the phase is done")
+    update_phase.add_argument("--handoff", help="what the next session should check first")
     update_phase.add_argument("--patch", help='JSON object, e.g. \'{"title":"New title","detail":"Updated text"}\'')
     update_phase.set_defaults(func=cmd_update_phase)
 
