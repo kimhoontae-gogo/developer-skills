@@ -59,8 +59,8 @@ Return recent state transitions and validation events.
 Move the runtime pointer to the requested stage.
 
 Use this when:
+- The agent is ready to advance after satisfying the current stage checklist.
 - The user wants to restart from a later stage.
-- The current stage was skipped intentionally.
 - Recovery requires jumping back to an earlier stage.
 - Moving to a later stage implies the previous current stage is treated as completed in the workflow history.
 

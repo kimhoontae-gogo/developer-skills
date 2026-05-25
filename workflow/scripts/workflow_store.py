@@ -924,7 +924,7 @@ def cmd_history(args: argparse.Namespace) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="SQLite store utilities for project-workflow")
+    parser = argparse.ArgumentParser(description="SQLite store utilities for workflow")
     parser.add_argument("--db", help="SQLite database path")
     sub = parser.add_subparsers(dest="command", required=True)
 

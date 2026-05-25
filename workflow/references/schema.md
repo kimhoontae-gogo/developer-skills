@@ -2,16 +2,16 @@
 
 ## Goals
 
-- Store workflow definitions in SQLite.
+- Store development workflow definitions in SQLite.
 - Keep runtime state separate from definitions.
-- Support resuming from the current stage or jumping to a chosen stage.
+- Support resuming a development task from the current stage or jumping to a chosen stage.
 - Preserve enough history to explain why a workflow advanced.
 
 ## Tables
 
 ### `projects`
 
-Top-level container. A project groups workflows.
+Top-level container. A project groups workflows for one git repository.
 
 Suggested columns:
 - `id`
@@ -22,7 +22,7 @@ Suggested columns:
 
 ### `workflows`
 
-Workflow definition for a project.
+Workflow definition for a project. Each workflow represents a reusable development task template (e.g., "Feature Development", "Bug Fix").
 
 Suggested columns:
 - `id`
@@ -64,7 +64,7 @@ Suggested columns:
 
 ### `workflow_runs`
 
-Runtime state for a workflow.
+Runtime state for a workflow instance.
 
 Suggested columns:
 - `id`
