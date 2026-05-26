@@ -20,6 +20,7 @@ Use this skill to manage SQLite-backed development plans that another session ca
 - `in_progress` and `done` phases are fixed in place.
 - `todo` phases may only move within the `todo` section.
 - `todo` phases may not move ahead of `in_progress` or `done` phases.
+- Use `set-phase-order` to reorder all `todo` phases at once by listing their IDs in the desired order.
 - After any status change, recompute the plan summary state.
 - If `create-project` is called without `--name`, use the current working directory name.
 - Every phase must be written as a reusable execution brief, not just a one-line task label.

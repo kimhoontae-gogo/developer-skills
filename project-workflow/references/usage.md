@@ -15,6 +15,7 @@ python3 scripts/workflow_cli.py -h
 - `python3 scripts/workflow_cli.py add-stage --workflow-id 1 --title "Plan" --detail "Define scope"`
 - `python3 scripts/workflow_cli.py update-stage --stage-id 1 --title "Planning"`
 - `python3 scripts/workflow_cli.py move-stage --stage-id 2 --before-stage-id 1`
+- `python3 scripts/workflow_cli.py set-stage-order --workflow-id 1 --stage-ids 2 3 1`
 - `python3 scripts/workflow_cli.py get-current --project-name developer-skills`
 - `python3 scripts/workflow_cli.py get-checklist --project-name developer-skills`
 - `python3 scripts/workflow_cli.py get-next --project-name developer-skills`

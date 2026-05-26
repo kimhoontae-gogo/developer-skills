@@ -569,6 +569,32 @@ class WorkflowStore:
             )
             return self._workflow_stages(conn, workflow_id)
 
+    def set_stage_order(self, workflow_id: int, ordered_stage_ids: Sequence[int]) -> list[dict[str, Any]]:
+        with self.connect() as conn:
+            workflow = self._get_workflow(conn, workflow_id)
+            if workflow["archived_at"] is not None:
+                raise ValueError("cannot modify an archived workflow")
+
+            stages = self._workflow_stages(conn, workflow_id, include_archived=False)
+            stage_ids = {stage["id"] for stage in stages}
+
+            for stage_id in ordered_stage_ids:
+                if stage_id not in stage_ids:
+                    raise ValueError(f"stage #{stage_id} not found in workflow")
+
+            if set(ordered_stage_ids) != stage_ids:
+                raise ValueError("ordered_stage_ids must include exactly all active stages")
+
+            self._rewrite_order(conn, workflow_id, ordered_stage_ids)
+            self._event(
+                conn,
+                "stage",
+                0,
+                "set_order",
+                {"workflow_id": workflow_id, "ordered_stage_ids": list(ordered_stage_ids)},
+            )
+            return self._workflow_stages(conn, workflow_id)
+
     def show_workflow_detail(self, workflow_id: int) -> WorkflowDetail:
         with self.connect() as conn:
             workflow = self._get_workflow(conn, workflow_id)
@@ -839,6 +865,11 @@ def cmd_move_stage(args: argparse.Namespace) -> None:
     )
 
 
+def cmd_set_stage_order(args: argparse.Namespace) -> None:
+    store = WorkflowStore(resolve_db_path(args.db))
+    _print_json(store.set_stage_order(args.workflow_id, args.stage_ids))
+
+
 def cmd_show_workflow(args: argparse.Namespace) -> None:
     store = WorkflowStore(resolve_db_path(args.db))
     with store.connect() as conn:
@@ -988,6 +1019,11 @@ def build_parser() -> argparse.ArgumentParser:
     move_stage.add_argument("--before-stage-id", type=int)
     move_stage.add_argument("--after-stage-id", type=int)
     move_stage.set_defaults(func=cmd_move_stage)
+
+    set_stage_order = sub.add_parser("set-stage-order", help="set the order of all active stages at once by listing their IDs")
+    set_stage_order.add_argument("--workflow-id", type=int, required=True)
+    set_stage_order.add_argument("--stage-ids", type=int, nargs="+", required=True, help="ordered list of stage IDs")
+    set_stage_order.set_defaults(func=cmd_set_stage_order)
 
     list_stages = sub.add_parser("list-stages", help="list stages in a workflow")
     list_stages.add_argument("--workflow-id", type=int)

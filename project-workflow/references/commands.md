@@ -22,7 +22,7 @@ Default project behavior:
 - `workflow add-stage`
 - `workflow update-stage`
 - `workflow remove-stage`
-- `workflow move-stage`
+- `workflow set-stage-order`
 - `workflow get current`
 - `workflow get checklist`
 - `workflow get next`
@@ -87,6 +87,10 @@ Edit a stage title, detail, and optionally replace its checklist.
 ### `workflow remove-stage`
 
 Remove a stage from the workflow definition and resequence the remaining stages.
+
+### `workflow set-stage-order`
+
+Set the order of all active stages at once by listing their IDs in the desired order.
 
 ### `workflow move-stage`
 

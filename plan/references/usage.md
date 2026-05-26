@@ -11,6 +11,7 @@
 - Add a detailed phase: `plan add-phase --plan-id 1 --title "Design" --detail "Define schema and output" --context "This is the first implementation pass and will be resumed by another session if interrupted." --approach "Begin with the schema and then update the CLI and export path." --files "scripts/plan_store.py,references/export-format.md" --steps "1. Add columns. 2. Add CLI flags. 3. Update display and export output." --validation "show-plan and export-markdown both render the new fields." --handoff "The next session should check that create/update/export round-trip all brief fields."`
 - Insert a detailed phase: `plan insert-phase --plan-id 1 --before-phase-id 2 --title "Review" --detail "Check API shape" --context "The previous implementation phase should be reviewed before it starts." --approach "Validate the data model and keep the workflow narrow." --files "scripts/plan_store.py" --steps "1. Review the schema. 2. Adjust the CLI if needed. 3. Re-run validation." --validation "The phase can be resumed directly from show-phase output." --handoff "Start by confirming the schema change is present in the current DB."`
 - Move a todo phase: `plan move-phase --phase-id 4 --after-phase-id 3`
+- Set phase order at once: `plan set-phase-order --plan-id 1 --phase-ids 3 1 2`
 - Show a plan: `plan show-plan --plan-id 1`
 - Show a phase: `plan show-phase --phase-id 2`
 - Start a phase: `plan start-phase --phase-id 2`

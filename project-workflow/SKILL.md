@@ -17,7 +17,7 @@ Use this skill to define and operate developer workflows that live in SQLite rat
 - Treat `move` as the only state transition primitive; moving forward implies the previous stage is considered complete in workflow history.
 - Keep stage execution ordered unless the workflow explicitly allows branching.
 - Use checklist output to verify that a stage is actually complete before advancing.
-- Use `add-stage`, `update-stage`, `remove-stage`, `move-stage`, `remove-workflow`, and `remove-project` to manage definitions and cleanup.
+- Use `add-stage`, `update-stage`, `remove-stage`, `move-stage`, `set-stage-order`, `remove-workflow`, and `remove-project` to manage definitions and cleanup.
 
 ## Data Layer
 
@@ -34,6 +34,7 @@ Use this skill to define and operate developer workflows that live in SQLite rat
 - Add a stage: `python3 scripts/workflow_cli.py add-stage --workflow-id 1 --title "Plan" --detail "Define scope"`
 - Update a stage: `python3 scripts/workflow_cli.py update-stage --stage-id 1 --title "Planning"`
 - Move a stage definition: `python3 scripts/workflow_cli.py move-stage --stage-id 2 --before-stage-id 1`
+- Set stage order at once: `python3 scripts/workflow_cli.py set-stage-order --workflow-id 1 --stage-ids 2 3 1`
 - Inspect current work: `python3 scripts/workflow_cli.py get-current --project-name developer-skills`
 - Inspect checklist: `python3 scripts/workflow_cli.py get-checklist --project-name developer-skills`
 - Move runtime pointer: `python3 scripts/workflow_cli.py move --project-name developer-skills --stage-id 2`
