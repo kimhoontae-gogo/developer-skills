@@ -738,12 +738,13 @@ class PlanStore:
             f"- Current Phase: {next((phase['title'] for phase in phases if phase['id'] == plan['current_phase_id']), 'None')}",
         ]
         for index, phase in enumerate(phases, start=1):
-            lines.append(f"- Phase {index}: {phase['status']}")
+            lines.append(f"- Phase {index}. {phase['title']} ({phase['status']})")
         lines.extend(["", "## Phases"])
         for index, phase in enumerate(phases, start=1):
+            title = _strip_phase_prefix(phase["title"])
             lines.extend(
                 [
-                    f"### Phase {index}. {phase['title']}",
+                    f"### Phase {index}. {title}",
                     phase["detail"],
                     "",
                 ]
@@ -822,6 +823,11 @@ def _print_project_detail(payload: dict[str, Any]) -> None:
         for plan in plans:
             label = "archived" if plan["archived_at"] else plan["status"]
             print(f"  - {plan['title']} #{plan['id']} :: {label}")
+
+
+def _strip_phase_prefix(title: str) -> str:
+    import re
+    return re.sub(r"^[Pp]hase\s*\d+\s*[:\-\.]\s*", "", title).strip()
 
 
 def _phase_brief_sections(phase: dict[str, Any]) -> list[tuple[str, str]]:
