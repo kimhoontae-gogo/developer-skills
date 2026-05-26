@@ -11,9 +11,11 @@ Default project behavior:
 
 - `workflow create-project`
 - `workflow list-projects`
+- `workflow update-project`
 - `workflow remove-project`
 - `workflow show-project`
 - `workflow create-workflow`
+- `workflow update-workflow`
 - `workflow remove-workflow`
 - `workflow list-workflows`
 - `workflow show-workflow`
@@ -67,6 +69,14 @@ Use this when:
 ### `workflow create-*`
 
 Use creation commands to define projects, workflows, and stages before runtime execution begins.
+
+### `workflow update-project`
+
+Update a project's name or description.
+
+### `workflow update-workflow`
+
+Update a workflow's title or description. Use this when a workflow's description needs to be refined so an AI can better match it to the user's task.
 
 ### `workflow remove-project`
 

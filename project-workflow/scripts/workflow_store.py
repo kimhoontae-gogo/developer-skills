@@ -324,6 +324,39 @@ class WorkflowStore:
             self._event(conn, "project", project["id"], "create", {"name": name})
             return project
 
+    def update_project(
+        self,
+        project_id: int,
+        *,
+        name: str | None = None,
+        description: str | None = None,
+    ) -> dict[str, Any]:
+        with self.connect() as conn:
+            project = self._get_project(conn, project_id=project_id)
+            updates: list[str] = []
+            params: list[Any] = []
+            if name is not None:
+                updates.append("name = ?")
+                params.append(name)
+            if description is not None:
+                updates.append("description = ?")
+                params.append(description)
+            if not updates:
+                return project
+            updates.append("updated_at = ?")
+            params.append(utc_now())
+            params.append(project_id)
+            conn.execute(f"UPDATE projects SET {', '.join(updates)} WHERE id = ?", params)
+            updated = self._get_project(conn, project_id=project_id)
+            self._event(
+                conn,
+                "project",
+                project_id,
+                "update",
+                {k: v for k, v in {"name": name, "description": description}.items() if v is not None},
+            )
+            return updated
+
     def list_projects(self) -> list[dict[str, Any]]:
         with self.connect() as conn:
             return [dict(row) for row in conn.execute("SELECT * FROM projects ORDER BY id ASC").fetchall()]
@@ -405,6 +438,41 @@ class WorkflowStore:
             self._ensure_run(conn, workflow["id"])
             self._event(conn, "workflow", workflow["id"], "create", {"project_id": project_id, "title": title})
             return workflow
+
+    def update_workflow(
+        self,
+        workflow_id: int,
+        *,
+        title: str | None = None,
+        description: str | None = None,
+    ) -> dict[str, Any]:
+        with self.connect() as conn:
+            workflow = self._get_workflow(conn, workflow_id)
+            if workflow["archived_at"] is not None:
+                raise ValueError("cannot update an archived workflow")
+            updates: list[str] = []
+            params: list[Any] = []
+            if title is not None:
+                updates.append("title = ?")
+                params.append(title)
+            if description is not None:
+                updates.append("description = ?")
+                params.append(description)
+            if not updates:
+                return workflow
+            updates.append("updated_at = ?")
+            params.append(utc_now())
+            params.append(workflow_id)
+            conn.execute(f"UPDATE workflows SET {', '.join(updates)} WHERE id = ?", params)
+            updated = self._get_workflow(conn, workflow_id)
+            self._event(
+                conn,
+                "workflow",
+                workflow_id,
+                "update",
+                {k: v for k, v in {"title": title, "description": description}.items() if v is not None},
+            )
+            return updated
 
     def remove_workflow(self, workflow_id: int) -> dict[str, Any]:
         with self.connect() as conn:
@@ -792,6 +860,11 @@ def cmd_show_project(args: argparse.Namespace) -> None:
     _print_json(store.show_project(args.project_id))
 
 
+def cmd_update_project(args: argparse.Namespace) -> None:
+    store = WorkflowStore(resolve_db_path(args.db))
+    _print_json(store.update_project(args.project_id, name=args.name, description=args.description))
+
+
 def cmd_remove_project(args: argparse.Namespace) -> None:
     store = WorkflowStore(resolve_db_path(args.db))
     _print_json(store.remove_project(args.project_id))
@@ -802,6 +875,13 @@ def cmd_create_workflow(args: argparse.Namespace) -> None:
     with store.connect() as conn:
         project = store.resolve_project(conn, project_id=args.project_id, name=args.project_name)
     _print_json(store.create_workflow(project["id"], args.title, args.description or ""))
+
+
+def cmd_update_workflow(args: argparse.Namespace) -> None:
+    store = WorkflowStore(resolve_db_path(args.db))
+    with store.connect() as conn:
+        workflow = store.resolve_workflow(conn, workflow_id=args.workflow_id, project_id=args.project_id, project_name=args.project_name)
+    _print_json(store.update_workflow(workflow["id"], title=args.title, description=args.description))
 
 
 def cmd_remove_workflow(args: argparse.Namespace) -> None:
@@ -943,6 +1023,12 @@ def build_parser() -> argparse.ArgumentParser:
     show_project.add_argument("--project-id", type=int, required=True)
     show_project.set_defaults(func=cmd_show_project)
 
+    update_project = sub.add_parser("update-project", help="update a project name or description")
+    update_project.add_argument("--project-id", type=int, required=True)
+    update_project.add_argument("--name")
+    update_project.add_argument("--description")
+    update_project.set_defaults(func=cmd_update_project)
+
     remove_project = sub.add_parser("remove-project", help="remove a project and its workflows")
     remove_project.add_argument("--project-id", type=int, required=True)
     remove_project.set_defaults(func=cmd_remove_project)
@@ -953,6 +1039,14 @@ def build_parser() -> argparse.ArgumentParser:
     create_workflow.add_argument("--title", required=True)
     create_workflow.add_argument("--description")
     create_workflow.set_defaults(func=cmd_create_workflow)
+
+    update_workflow = sub.add_parser("update-workflow", help="update a workflow title or description")
+    update_workflow.add_argument("--workflow-id", type=int)
+    update_workflow.add_argument("--project-id", type=int)
+    update_workflow.add_argument("--project-name")
+    update_workflow.add_argument("--title")
+    update_workflow.add_argument("--description")
+    update_workflow.set_defaults(func=cmd_update_workflow)
 
     remove_workflow = sub.add_parser("remove-workflow", help="remove a workflow and its stages")
     remove_workflow.add_argument("--workflow-id", type=int)
