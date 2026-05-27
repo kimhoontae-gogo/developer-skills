@@ -2,13 +2,13 @@
 
 AI Agent Skills for planning and workflow management.
 
-This repository contains reusable skill packages that teach an AI agent how to manage structured work with SQLite-backed state instead of ad hoc documents.
+This repository contains reusable skill packages that teach an AI agent how to manage structured work with local state instead of ad hoc documents.
 
 ## Included Skills
 
 ### `plan`
 
-Use when you need a structured project plan with ordered phases, status tracking, resume support, and Markdown export.
+Use when you need a long-lived project plan with ordered phases, status tracking, resume support, and Markdown export.
 
 Typical use cases:
 - Break a project into phases
@@ -16,25 +16,29 @@ Typical use cases:
 - Track progress across long-running planning work
 - Export a plan as Markdown for sharing
 
-### `project-workflow`
+### `workflow`
 
-Use when you need a project-specific workflow with ordered stages, checklist validation, runtime stage movement, and cleanup.
+Use when you need a project-specific execution workflow with ordered stages, checklist validation, runtime stage movement, and cleanup.
 
 Typical use cases:
-- Define a workflow under a project
+- Define a workflow under the current project path
 - Ask the agent what the current stage is
 - Check the checklist before moving forward
 - Reorder, update, or remove stages
-- Jump back to an earlier stage when a review fails
+- Jump back to an earlier stage after review
 
 ## Local State
 
-Both skills keep their default SQLite files under `~/.developer-skills/`:
+The skills keep their default local state under `~/.developer-skills/` for global planning data:
 
 - `~/.developer-skills/plan.sqlite3`
-- `~/.developer-skills/workflow.sqlite3`
 
-You can override those paths with the corresponding environment variables or `--db` flags if needed.
+The `workflow` skill stores project-local definition and runtime files under each repository:
+
+- `[project]/.workflow/definition.json`
+- `[project]/.workflow/runtime.json`
+
+The workflow runtime file should stay untracked. The skill updates the project root `.gitignore` to ignore `.workflow/runtime.json` and `.workflow/*.tmp`.
 
 ## Quick Start
 
@@ -90,26 +94,26 @@ plan update-phase --phase-id 2 --patch '{"detail":"Implement export and formatti
 plan export-markdown --plan-id 1
 ```
 
-### Project Workflow
+### Workflow
 
-`project-workflow` is for execution flow. It is meant to answer questions like:
+`workflow` is for execution flow. It is meant to answer questions like:
 - What is the current stage?
 - What should I check before moving on?
 - What is the next stage?
 - Which stage should I jump back to after a review?
 
-1. Create the project if it does not exist.
+1. Initialize the current project directory.
 
 ```bash
-python3 scripts/workflow_cli.py create-project
+python3 scripts/workflow_cli.py create-project --name "hermes-app"
 ```
 
 If you do not pass `--name`, the current directory name is used.
 
-2. Create a workflow under the project.
+2. Create a workflow under the current project path.
 
 ```bash
-python3 scripts/workflow_cli.py create-workflow --project-name developer-skills --title "Web App"
+python3 scripts/workflow_cli.py create-workflow --title "Web App" --description "Standard feature flow"
 ```
 
 3. Add stages to the workflow.
@@ -134,16 +138,16 @@ python3 scripts/workflow_cli.py add-stage \
 5. Ask the agent where it is and what to do next.
 
 ```bash
-python3 scripts/workflow_cli.py get-current --project-name developer-skills
-python3 scripts/workflow_cli.py get-checklist --project-name developer-skills
-python3 scripts/workflow_cli.py get-next --project-name developer-skills
-python3 scripts/workflow_cli.py status --project-name developer-skills
+python3 scripts/workflow_cli.py get-current
+python3 scripts/workflow_cli.py get-checklist
+python3 scripts/workflow_cli.py get-next
+python3 scripts/workflow_cli.py status --json
 ```
 
 6. Move the runtime pointer to the stage you want to work on.
 
 ```bash
-python3 scripts/workflow_cli.py move --project-name developer-skills --stage-id 2
+python3 scripts/workflow_cli.py move --stage-id 2
 ```
 
 This is the command you use when:
@@ -163,20 +167,21 @@ python3 scripts/workflow_cli.py remove-stage --stage-id 4
 
 ```bash
 python3 scripts/workflow_cli.py remove-workflow --workflow-id 1
-python3 scripts/workflow_cli.py remove-project --project-id 1
+python3 scripts/workflow_cli.py remove-project
 ```
 
 ## How To Choose
 
 - Use `plan` when you want a long-lived plan with phases that support planning and export.
-- Use `project-workflow` when you want the agent to operate like a stage-driven executor that can inspect, move, and resume work.
+- Use `workflow` when you want the agent to operate like a stage-driven executor that can inspect, move, and resume work.
 
 ## Conventions
 
 - Keep skill-specific instructions inside each skill directory.
 - Keep low-level command details in `references/` instead of the root README.
-- Store local SQLite state under `~/.developer-skills/` by default.
-- Do not commit local SQLite databases or virtual environments.
+- Store `plan` state globally under `~/.developer-skills/`.
+- Store `workflow` definition and runtime state inside each project under `.workflow/`.
+- Do not commit local runtime files or virtual environments.
 
 ## Repository Layout
 
@@ -185,9 +190,8 @@ plan/
   SKILL.md
   references/
   scripts/
-project-workflow/
+workflow/
   SKILL.md
   references/
   scripts/
 ```
-

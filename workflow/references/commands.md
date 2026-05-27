@@ -2,18 +2,20 @@
 
 ## Project Selection
 
-Default project behavior:
-- If the user does not specify a project, resolve it from the current directory name.
-- If the user specifies a project name or ID, use that value instead.
-- `-h` and `--help` are available on the top-level CLI and every subcommand.
+- The default project is the current working directory.
+- Override the project root with `--project-path <path>` when needed.
+- If `--workflow-id` is omitted, select the latest active workflow in the current project.
+- The CLI exposes `-h` / `--help` on the top level and every subcommand.
 
 ## Canonical Commands
 
 - `workflow create-project`
+- `workflow update-project`
 - `workflow list-projects`
-- `workflow remove-project`
 - `workflow show-project`
+- `workflow remove-project`
 - `workflow create-workflow`
+- `workflow update-workflow`
 - `workflow remove-workflow`
 - `workflow list-workflows`
 - `workflow show-workflow`
@@ -24,87 +26,113 @@ Default project behavior:
 - `workflow remove-stage`
 - `workflow move-stage`
 - `workflow set-stage-order`
-- `workflow get current`
-- `workflow get checklist`
-- `workflow get next`
+- `workflow get-current`
+- `workflow get-checklist`
+- `workflow get-next`
 - `workflow move <stage_id>`
 - `workflow status`
 - `workflow history`
 
-## Read Commands
+## Project Commands
 
-### `workflow get current`
+### `workflow create-project`
 
-Return the current stage title, detail, and any stage metadata needed to continue work.
+Initialize `[project]/.workflow/`, create `definition.json` and `runtime.json`, and update the project root `.gitignore` to exclude `.workflow/runtime.json`.
 
-### `workflow get checklist`
+### `workflow update-project`
 
-Return the checklist for the current stage and enough context to judge whether the stage is truly done.
+Update project metadata stored in `definition.json`.
 
-### `workflow get next`
+### `workflow list-projects`
 
-Return the next stage after the current one, or the best candidate if the user wants to resume from a later point.
+Return the current project record if it is initialized.
 
-### `workflow status`
+### `workflow show-project`
 
-Return a compact summary of project, workflow, current stage, and overall progress.
-
-### `workflow history`
-
-Return recent state transitions and validation events.
-
-## Mutation Commands
-
-### `workflow move <stage_id>`
-
-Move the runtime pointer to the requested stage.
-
-Use this when:
-- The agent is ready to advance after satisfying the current stage checklist.
-- The user wants to restart from a later stage.
-- Recovery requires jumping back to an earlier stage.
-- Moving to a later stage implies the previous current stage is treated as completed in the workflow history.
-
-### `workflow create-*`
-
-Use creation commands to define projects, workflows, and stages before runtime execution begins.
+Return the project metadata plus workflow summaries.
 
 ### `workflow remove-project`
 
-Remove a project and recursively remove its workflows, stages, and runtime data.
+Delete the local workflow files under `[project]/.workflow/`.
+
+## Workflow Commands
+
+### `workflow create-workflow`
+
+Create a workflow definition inside the current project.
+
+### `workflow update-workflow`
+
+Update a workflow title or description.
 
 ### `workflow remove-workflow`
 
-Remove a workflow and its stages, checklist entries, and runtime state.
+Remove a workflow and its stages from the project definition and runtime state.
+
+### `workflow list-workflows`
+
+List all workflows for the current project.
+
+### `workflow show-workflow`
+
+Return the selected workflow, its stages, and current runtime state.
+
+## Stage Commands
 
 ### `workflow add-stage`
 
-Append a new stage to the end of a workflow.
+Append a stage to a workflow.
 
 ### `workflow update-stage`
 
-Edit a stage title, detail, and optionally replace its checklist.
+Update a stage title, detail, and optionally replace the checklist.
 
 ### `workflow remove-stage`
 
-Remove a stage from the workflow definition and resequence the remaining stages.
+Remove a stage and resequence the remaining stages.
 
 ### `workflow move-stage`
 
-Reorder a stage within the workflow definition using `--before-stage-id` or `--after-stage-id`.
+Move one stage before or after another stage inside the same workflow.
 
 ### `workflow set-stage-order`
 
-Set the order of all active stages at once by listing their IDs in the desired order.
+Replace the active stage order by listing the stage IDs in the desired order.
+
+### `workflow list-stages`
+
+List stages for the selected workflow in order.
+
+### `workflow show-stage`
+
+Return one stage plus its checklist items.
+
+## Runtime Commands
+
+### `workflow get-current`
+
+Return the current runtime pointer and the current stage, if any.
+
+### `workflow get-checklist`
+
+Return the current stage checklist.
+
+### `workflow get-next`
+
+Return the next stage after the current one, or the first stage when the run has not started.
+
+### `workflow move <stage_id>`
+
+Move the runtime pointer to a specific stage.
 
 ### `workflow status`
 
-Return a compact progress summary for the current workflow, including the current stage, next stage, and checklist context.
+Return a compact progress summary for the selected workflow.
 
 ### `workflow history`
 
-Return recent workflow events for debugging or audit trails.
+Return recent runtime events for the selected workflow.
 
 ## Validation Rule
 
-- Do not advance from one stage to the next until the checklist for the current stage has been reviewed and satisfied.
+- Do not move forward until the current stage checklist has been reviewed and satisfied.
