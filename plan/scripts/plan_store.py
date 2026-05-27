@@ -598,6 +598,31 @@ class PlanStore:
             self.recompute_plan(conn, plan_id)
             return self._plan_phases(conn, plan_id, include_archived=False)
 
+    def set_phase_order(self, plan_id: int, ordered_phase_ids: Sequence[int]) -> list[dict[str, Any]]:
+        with self.connect() as conn:
+            plan = self._get_plan(conn, plan_id)
+            if plan["archived_at"] is not None:
+                raise ValueError("cannot modify an archived plan")
+
+            phases = self._plan_phases(conn, plan_id, include_archived=False)
+            phase_map = {phase["id"]: phase for phase in phases}
+
+            for phase_id in ordered_phase_ids:
+                if phase_id not in phase_map:
+                    raise ValueError(f"phase #{phase_id} not found in plan")
+                if phase_map[phase_id]["status"] != "todo":
+                    raise ValueError(f"only todo phases may be reordered; phase #{phase_id} is {phase_map[phase_id]['status']}")
+
+            todo_ids = [phase["id"] for phase in phases if phase["status"] == "todo"]
+            if set(ordered_phase_ids) != set(todo_ids):
+                raise ValueError("ordered_phase_ids must include exactly all todo phases")
+
+            locked_ids = [phase["id"] for phase in phases if phase["status"] != "todo"]
+            self._rewrite_order(conn, plan_id, locked_ids + list(ordered_phase_ids))
+            self.recompute_plan(conn, plan_id)
+            self._event(conn, "plan", plan_id, "set_phase_order", {"ordered_phase_ids": list(ordered_phase_ids)})
+            return self._plan_phases(conn, plan_id, include_archived=False)
+
     def update_phase(
         self,
         phase_id: int,
@@ -1052,6 +1077,11 @@ def cmd_move_phase(args: argparse.Namespace) -> None:
     )
 
 
+def cmd_set_phase_order(args: argparse.Namespace) -> None:
+    store = PlanStore(resolve_db_path(args.db))
+    _print_json(store.set_phase_order(args.plan_id, args.phase_ids))
+
+
 def cmd_update_phase(args: argparse.Namespace) -> None:
     store = PlanStore(resolve_db_path(args.db))
     patch = _parse_patch(args.patch)
@@ -1209,6 +1239,11 @@ def build_parser() -> argparse.ArgumentParser:
     move_phase.add_argument("--before-phase-id", type=int)
     move_phase.add_argument("--after-phase-id", type=int)
     move_phase.set_defaults(func=cmd_move_phase)
+
+    set_phase_order = sub.add_parser("set-phase-order", help="set the order of all todo phases at once by listing their IDs")
+    set_phase_order.add_argument("--plan-id", type=int, required=True)
+    set_phase_order.add_argument("--phase-ids", type=int, nargs="+", required=True, help="ordered list of todo phase IDs")
+    set_phase_order.set_defaults(func=cmd_set_phase_order)
 
     update_phase = sub.add_parser("update-phase", help="update a phase")
     update_phase.add_argument("--phase-id", type=int, required=True)

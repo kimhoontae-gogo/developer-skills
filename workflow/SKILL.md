@@ -44,6 +44,7 @@ Each project can have multiple workflows. The agent picks the appropriate workfl
 - `move` is the only runtime state transition. Moving forward implies the previous stage is treated as complete.
 - Checklists are gatekeepers. Do not advance until required checklist items are satisfied.
 - Stage execution order is fixed unless the workflow definition itself is reordered via `move-stage`.
+- Use `set-stage-order` to reorder all active stages at once by listing their IDs in the desired order.
 
 ## Typical AI Usage Flow
 
@@ -117,6 +118,9 @@ python3 scripts/workflow_cli.py move --project-name hermes-app --stage-id 2
 # 6. Inspect overall status
 python3 scripts/workflow_cli.py status --project-name hermes-app
 python3 scripts/workflow_cli.py history --project-name hermes-app
+
+# 7. Reorder all active stages in one shot
+python3 scripts/workflow_cli.py set-stage-order --workflow-id 1 --stage-ids 2 3 1
 ```
 
 ## Recommended Workflow Templates

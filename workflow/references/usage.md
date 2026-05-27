@@ -15,6 +15,7 @@ python3 scripts/workflow_cli.py -h
 - `python3 scripts/workflow_cli.py add-stage --workflow-id 1 --title "Understand" --detail "Clarify scope"`
 - `python3 scripts/workflow_cli.py update-stage --stage-id 1 --title "Understanding"`
 - `python3 scripts/workflow_cli.py move-stage --stage-id 2 --before-stage-id 1`
+- `python3 scripts/workflow_cli.py set-stage-order --workflow-id 1 --stage-ids 2 3 1`
 - `python3 scripts/workflow_cli.py get-current --project-name hermes-app`
 - `python3 scripts/workflow_cli.py get-checklist --project-name hermes-app`
 - `python3 scripts/workflow_cli.py get-next --project-name hermes-app`

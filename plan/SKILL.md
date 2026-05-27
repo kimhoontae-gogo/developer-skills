@@ -24,6 +24,7 @@ Use this skill to manage SQLite-backed development plans that another session ca
 - If `create-project` is called without `--name`, use the current working directory name.
 - Every phase must be written as a reusable execution brief, not just a one-line task label.
 - Every phase should include `detail`, `context`, `approach`, `files`, `steps`, `validation`, and `handoff`.
+- Use `set-phase-order` to reorder all `todo` phases at once by listing their IDs in the desired order.
 - If a section is not applicable, leave it empty only after deciding it is genuinely unnecessary.
 - Write phases so another session can continue without external memory or follow-up questions.
 - See `references/phase-template.md` for the required phase brief shape.
