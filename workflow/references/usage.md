@@ -10,37 +10,41 @@ python3 scripts/workflow_cli.py -h
 
 ## Common Commands
 
+- Override the project root when you are not running from the repo root:
+
+```bash
+python3 scripts/workflow_cli.py --project-path /path/to/repo create-project --name "hermes-app"
+```
+
 - `python3 scripts/workflow_cli.py create-project --name "hermes-app"`
-- `python3 scripts/workflow_cli.py update-project --project-id 1 --description "Hermes Agent console workspace"`
-- `python3 scripts/workflow_cli.py create-workflow --project-name hermes-app --title "Feature Development"`
-- `python3 scripts/workflow_cli.py update-workflow --project-name hermes-app --title "Feature Development" --description "Use this when adding or extending web app features"`
-- `python3 scripts/workflow_cli.py add-stage --workflow-id 1 --title "Understand" --detail "Clarify scope"`
-- `python3 scripts/workflow_cli.py update-stage --stage-id 1 --title "Understanding"`
+- `python3 scripts/workflow_cli.py update-project --description "Hermes Agent console workspace"`
+- `python3 scripts/workflow_cli.py create-workflow --title "Feature Development" --description "Standard flow for adding new features"`
+- `python3 scripts/workflow_cli.py update-workflow --workflow-id 1 --description "Use this when adding or extending web app features"`
+- `python3 scripts/workflow_cli.py add-stage --workflow-id 1 --title "Understand" --detail "Clarify scope" --checklist '{"item":"Scope is clarified with the user","required":true}'`
+- `python3 scripts/workflow_cli.py update-stage --stage-id 1 --title "Understand the request"`
 - `python3 scripts/workflow_cli.py move-stage --stage-id 2 --before-stage-id 1`
 - `python3 scripts/workflow_cli.py set-stage-order --workflow-id 1 --stage-ids 2 3 1`
-- `python3 scripts/workflow_cli.py get-current --project-name hermes-app`
-- `python3 scripts/workflow_cli.py get-checklist --project-name hermes-app`
-- `python3 scripts/workflow_cli.py get-next --project-name hermes-app`
-- `python3 scripts/workflow_cli.py move --project-name hermes-app --stage-id 2`
-- `python3 scripts/workflow_cli.py status --project-name hermes-app`
-- `python3 scripts/workflow_cli.py history --project-name hermes-app`
+- `python3 scripts/workflow_cli.py get-current`
+- `python3 scripts/workflow_cli.py get-checklist`
+- `python3 scripts/workflow_cli.py get-next`
+- `python3 scripts/workflow_cli.py move --stage-id 2`
+- `python3 scripts/workflow_cli.py status`
+- `python3 scripts/workflow_cli.py history`
 
 ## Typical Agent Flow
 
-1. The user asks you to build/fix something.
-2. Resolve (or create) the project based on the current directory.
-3. Check if a relevant workflow exists for the task type (e.g., "Feature Development", "Bug Fix").
-4. If no workflow exists, create one and add stages + checklists.
-5. Start execution from the first stage.
-6. For each stage:
-   a. Read `get-current` to know where you are.
-   b. Read `get-checklist` to know what must be done before advancing.
-   c. Do the work.
-   d. Only after satisfying the checklist, run `move` to the next stage.
-7. If the session ends before completion, the next session can resume via `get-current`.
+1. Start from the current working directory unless the user specifies a different project path.
+2. Run `create-project` once for the project root.
+3. Create a workflow for the task type the user requested.
+4. Add stages and checklists that describe the implementation path.
+5. Use `get-current` and `get-checklist` before claiming a stage is done.
+6. Use `move` to advance the runtime pointer after validation passes.
+7. Use `move-stage` or `set-stage-order` only when the definition order changes.
+8. If the session ends, the next session can resume from `runtime.json`.
+9. If `workflow-id` is omitted, the command layer uses the latest active workflow in the project.
 
-## Notes
+## File Layout
 
-- If the user does not specify a project, commands that resolve project context should use the current working directory name.
-- The default SQLite database lives at `~/.developer-skills/workflow.sqlite3` unless `WORKFLOW_DB_PATH` or `--db` overrides it.
-- `-h` and `--help` are available on the top-level CLI and every subcommand.
+- `[project]/.workflow/definition.json` stores the tracked workflow definition.
+- `[project]/.workflow/runtime.json` stores local runtime state and is ignored.
+- `[project]/.gitignore` should keep `.workflow/runtime.json` untracked.

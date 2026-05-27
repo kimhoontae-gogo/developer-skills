@@ -1,103 +1,120 @@
-# SQLite Schema
+# JSON Schema
 
 ## Goals
 
-- Store development workflow definitions in SQLite.
+- Store workflow definitions in a project-local JSON file.
 - Keep runtime state separate from definitions.
-- Support resuming a development task from the current stage or jumping to a chosen stage.
-- Preserve enough history to explain why a workflow advanced.
+- Make definition changes trackable in git while runtime state stays local.
+- Support resuming from the current stage or jumping to a chosen stage.
 
-## Tables
+## File Layout
 
-### `projects`
+### `definition.json`
 
-Top-level container. A project groups workflows for one git repository.
+Tracked source of truth for the project workflow definition.
 
-Suggested columns:
-- `id`
-- `name`
-- `description`
-- `created_at`
-- `updated_at`
+Suggested structure:
 
-### `workflows`
+```json
+{
+  "schema_version": 1,
+  "project": {
+    "name": "hermes-app",
+    "description": "Hermes Agent console",
+    "created_at": "2026-05-28T12:00:00Z",
+    "updated_at": "2026-05-28T12:00:00Z"
+  },
+  "next_ids": {
+    "workflow": 1,
+    "stage": 1,
+    "checklist": 1
+  },
+  "workflows": [
+    {
+      "id": 1,
+      "title": "Feature Development",
+      "description": "Standard flow for adding new features",
+      "status": "active",
+      "created_at": "2026-05-28T12:00:00Z",
+      "updated_at": "2026-05-28T12:00:00Z",
+      "archived_at": null,
+      "stages": [
+        {
+          "id": 1,
+          "workflow_id": 1,
+          "position": 1,
+          "title": "Understand",
+          "detail": "Clarify scope and inspect relevant files",
+          "status": "todo",
+          "created_at": "2026-05-28T12:00:00Z",
+          "updated_at": "2026-05-28T12:00:00Z",
+          "archived_at": null,
+          "checklists": [
+            {
+              "id": 1,
+              "stage_id": 1,
+              "position": 1,
+              "item": "Scope is clarified",
+              "required": true,
+              "created_at": "2026-05-28T12:00:00Z",
+              "updated_at": "2026-05-28T12:00:00Z"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
 
-Workflow definition for a project. Each workflow represents a reusable development task template (e.g., "Feature Development", "Bug Fix").
+### `runtime.json`
 
-Suggested columns:
-- `id`
-- `project_id`
-- `title`
-- `description`
-- `status`
-- `created_at`
-- `updated_at`
+Local-only state for the active workflow run.
 
-### `workflow_stages`
+Suggested structure:
 
-Ordered stage definitions for one workflow.
-
-Suggested columns:
-- `id`
-- `workflow_id`
-- `position`
-- `title`
-- `detail`
-- `status`
-- `created_at`
-- `updated_at`
-
-Stage status should describe the definition lifecycle only when needed. Runtime progress belongs elsewhere.
-
-### `stage_checklists`
-
-Checklist items used to validate whether the active stage is complete.
-
-Suggested columns:
-- `id`
-- `stage_id`
-- `position`
-- `item`
-- `required`
-- `created_at`
-- `updated_at`
-
-### `workflow_runs`
-
-Runtime state for a workflow instance.
-
-Suggested columns:
-- `id`
-- `workflow_id`
-- `current_stage_id`
-- `status`
-- `started_at`
-- `updated_at`
-- `completed_at`
-
-### `workflow_events`
-
-Append-only audit trail.
-
-Suggested columns:
-- `id`
-- `entity_type`
-- `entity_id`
-- `event_type`
-- `payload_json`
-- `created_at`
-
-## Default Project Resolution
-
-- Use the current working directory name as the default project key.
-- Override only when the user explicitly supplies a project name or ID.
-- Keep this resolution rule in the command layer so all commands behave consistently.
+```json
+{
+  "schema_version": 1,
+  "next_event_id": 1,
+  "runs": {
+    "1": {
+      "id": 1,
+      "workflow_id": 1,
+      "current_stage_id": 2,
+      "status": "in_progress",
+      "started_at": "2026-05-28T12:00:00Z",
+      "updated_at": "2026-05-28T12:00:00Z",
+      "completed_at": null
+    }
+  },
+  "events": [
+    {
+      "id": 1,
+      "entity_type": "run",
+      "entity_id": 1,
+      "event_type": "move",
+      "payload": {
+        "workflow_id": 1,
+        "from_stage_id": null,
+        "to_stage_id": 1
+      },
+      "created_at": "2026-05-28T12:00:00Z"
+    }
+  ]
+}
+```
 
 ## Invariants
 
-- One workflow run should have one current stage at a time.
-- Stage order should be stable and deterministic.
-- Checklist validation should read from the active stage only.
-- A move operation should update the runtime pointer and emit an event.
-- Advancing to the next stage does not require a separate per-stage completion record; the new pointer position is the proof of progress.
-- Definitions should not overwrite runtime progress.
+- One workflow run has one current stage pointer.
+- Stage order is deterministic by `position`.
+- Checklist validation reads from the current stage only.
+- Advancing to another stage does not require a separate per-stage completion record.
+- Runtime changes should not rewrite the tracked definition except when the definition itself changes.
+
+## Default Project Resolution
+
+- Use the current working directory as the default project root.
+- Resolve the project root in the command layer so all commands behave consistently.
+- Create or update the project root `.gitignore` so `.workflow/runtime.json` remains local.
