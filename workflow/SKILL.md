@@ -100,8 +100,14 @@ Agent:
 # 1. Ensure the project exists (uses cwd name if omitted)
 python3 scripts/workflow_cli.py create-project --name "hermes-app" --description "Hermes Agent console"
 
+# 1b. Refine project metadata when needed
+python3 scripts/workflow_cli.py update-project --project-id 1 --description "Hermes Agent console workspace"
+
 # 2. Create a workflow template for this project
 python3 scripts/workflow_cli.py create-workflow --project-name hermes-app --title "Feature Development" --description "Standard flow for adding new features"
+
+# 2b. Refine workflow metadata so future sessions can pick it correctly
+python3 scripts/workflow_cli.py update-workflow --project-name hermes-app --title "Feature Development" --description "Use this when adding or extending web app features"
 
 # 3. Add stages to the workflow
 python3 scripts/workflow_cli.py add-stage --workflow-id 1 --title "Understand" --detail "Read existing code and clarify scope with the user" --checklist '{"item":"Scope is clarified with user","required":true}' --checklist '{"item":"Related files identified","required":true}'

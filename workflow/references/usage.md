@@ -11,7 +11,9 @@ python3 scripts/workflow_cli.py -h
 ## Common Commands
 
 - `python3 scripts/workflow_cli.py create-project --name "hermes-app"`
+- `python3 scripts/workflow_cli.py update-project --project-id 1 --description "Hermes Agent console workspace"`
 - `python3 scripts/workflow_cli.py create-workflow --project-name hermes-app --title "Feature Development"`
+- `python3 scripts/workflow_cli.py update-workflow --project-name hermes-app --title "Feature Development" --description "Use this when adding or extending web app features"`
 - `python3 scripts/workflow_cli.py add-stage --workflow-id 1 --title "Understand" --detail "Clarify scope"`
 - `python3 scripts/workflow_cli.py update-stage --stage-id 1 --title "Understanding"`
 - `python3 scripts/workflow_cli.py move-stage --stage-id 2 --before-stage-id 1`
